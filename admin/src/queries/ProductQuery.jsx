@@ -11,6 +11,7 @@ import {
   getProducts,
   updateProduct,
   getFilterCategory,
+  getCoupon, getCouponById, addCoupon, updateCoupon, deletecoupons, couponStatus
 } from "./productUrls";
 
 const useGetCategory = (data) => {
@@ -135,6 +136,80 @@ const useDeleteProduct = () => {
   });
 };
 
+
+
+
+const useGetCoupon = (data) => {
+  return useQuery(["get_coupon", data], () => getCoupon(data), {
+    staleTime: 3000,
+    keepPreviousData: true,
+    // refetchOnWindowFocus: false,
+  });
+};
+const useAddCoupon = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation((data) => addCoupon(data), {
+    onSuccess: (data) => {
+      queryClient.invalidateQueries("get_coupon");
+      return data;
+    },
+    onError: (data) => {
+      return data;
+    },
+  });
+};
+const useGetCouponById = (data) => {
+  console.log('get coupon by id', data)
+  return useQuery(["get_coupon", data], () => getCouponById(data), {
+    // staleTime: 30000,
+    keepPreviousData: true,
+    refetchOnWindowFocus: false,
+  });
+};
+const useUpdateCouponStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation((data) => couponStatus(data), {
+    onSuccess: (data) => {
+      queryClient.invalidateQueries("get_coupon");
+      return data;
+    },
+    onError: (data) => {
+      return data;
+    },
+  });
+};
+
+const useUpdateCoupon = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation((data) => updateCoupon(data), {
+    onSuccess: (data) => {
+      queryClient.invalidateQueries("get_coupon");
+      return data;
+    },
+    onError: (data) => {
+      return data;
+    },
+  });
+};
+const useDeletecoupons = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation((data) => deletecoupons(data), {
+
+
+    onSuccess: (data) => {
+      queryClient.invalidateQueries("get_coupon");
+      return data;
+    },
+    onError: (data) => {
+      return data;
+    },
+  });
+};
+
 export {
   useGetCategory,
   useEditCategorys, 
@@ -146,5 +221,6 @@ export {
   useAddProduct,
   useUpdateProduct,
   useDeleteProduct,
-  useGetFilterCategory
+  useGetFilterCategory,
+   useGetCoupon, useAddCoupon, useGetCouponById, useUpdateCouponStatus, useUpdateCoupon, useDeletecoupons
 };

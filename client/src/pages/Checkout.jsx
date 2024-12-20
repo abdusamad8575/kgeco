@@ -1,24 +1,25 @@
 import React, { useState, useEffect } from "react";
 import axiosInstance from "../axios";
-import { FaRegTrashAlt, FaLock, FaPlus,FaMinus } from "react-icons/fa";
+import { FaRegTrashAlt, FaLock, FaPlus, FaMinus, FaCreditCard } from "react-icons/fa";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Modal, Button, Form } from "react-bootstrap";
-import logoPng from "../assets/images/logo.png";
 import LoadingScreen from "../components/loading/LoadingScreen";
+import { useSelector } from 'react-redux';
+
 
 
 const Checkout = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
+  const userDetails = useSelector(state => state.userDetails);
+
+
   const [currentStep, setCurrentStep] = useState(1);
-  const [deliveryAddress, setDeliveryAddress] = useState(
-    "Ananthu xyz house yeroor po yeroor Yeroor KOLLAM, KERALA 691312"
-  );
   const [paymentOption, setPaymentOption] = useState("razorpay");
   const [cartData, setCartData] = useState([]);
-  const [filteredCartData,setFilteredCartData] = useState([])
+  const [filteredCartData, setFilteredCartData] = useState([])
 
   const [salePriceTotal, setSalePriceTotal] = useState(0);
   const [proPriceTotal, setProPriceTotal] = useState(0);
@@ -30,6 +31,73 @@ const Checkout = () => {
 
   const [loadingIndex, setLoadingIndex] = useState(null);
   const [loadScreenState, setLoadScreenState] = useState(true); // Loading state
+
+  const [coupons, setCoupons] = useState([]);
+  const [coinCoupons, setCoinCoupons] = useState([]);
+  const [appliedCoupon, setAppliedCoupon] = useState('');
+  const [appliedCouponDetails, setAppliedCouponDetails] = useState('');
+  const [discount, setDiscount] = useState(0);
+  const [showCouponModal, setShowCouponModal] = useState(false);
+
+  useEffect(() => {
+    fetchCoupons();
+  }, [userDetails]);
+
+  const fetchCoupons = async () => {
+    try {
+      const { data } = await axiosInstance.get('/coupons/client');
+      setCoupons(data.data);
+    } catch (error) {
+      console.error('Failed to fetch coupons', error);
+    }
+  };
+
+  const applyCoupon = async (couponCode) => {
+    setDiscount(0)
+
+
+    try {
+      let useCoupon;
+      if (couponCode) {
+
+        useCoupon = coupons?.filter((coupon) => {
+
+          if (coupon.code === couponCode) {
+            setAppliedCoupon(coupon?.code);
+            setAppliedCouponDetails(coupon);
+            return coupon
+          }
+          //  else {
+          //   alert('your coupon code is not existed')
+          // }
+
+        })
+        useCoupon[0] ? '' : alert('your coupon code is not existed')
+
+        if (useCoupon) {
+          const couponId = useCoupon[0]?._id;
+
+          const { data } = await axiosInstance.post('/coupons/validate-coupon', {
+            couponId,
+            userDetails,
+            totalAmountToPay,
+          });
+
+          if (data.valid) {
+            setDiscount(data.discount);
+            // setAppliedCoupon(couponId);
+          } else {
+            alert(data.message);
+          }
+        }
+      } else {
+
+      }
+
+    } catch (error) {
+      console.error('Failed to apply coupon', error);
+    }
+  };
 
   const fetchAddress = async (urlQ) => {
     try {
@@ -90,12 +158,12 @@ const Checkout = () => {
 
       const items = response?.data?.data?.item;
 
-      const filteredItems = items.filter((obj)=>{
+      const filteredItems = items.filter((obj) => {
 
-        return obj.productId.isAvailable !=false
-  
+        return obj.productId.isAvailable != false
+
       })
-      
+
       setFilteredCartData(filteredItems)
 
       // Calculate the total sale price
@@ -125,7 +193,7 @@ const Checkout = () => {
 
   const handleRemoveItem = async (itemId) => {
     let urlQuery = `/user/removeFromCart/${itemId}`;
-  
+
     try {
       const response = await axiosInstance.patch(urlQuery);
       const updatedFilteredCartItems = filteredCartData.filter(
@@ -135,17 +203,17 @@ const Checkout = () => {
         (acc, item) => acc + item.productId.price * item.qty,
         0
       );
-  
+
       setFilteredCartData(updatedFilteredCartItems);
-  
+
       // Calculate the total sale price
       const totalSalePrice = calculateTotalSalePrice(updatedFilteredCartItems);
       setSalePriceTotal(totalSalePrice);
-  
+
       // Calculate the total  price
       const totalProPrice = calculateTotalProPrice(updatedFilteredCartItems);
       setProPriceTotal(totalProPrice);
-  
+
       if (updatedFilteredCartItems?.length === 0) {
         navigate("/");
       }
@@ -153,102 +221,16 @@ const Checkout = () => {
       console.error("Error removing item from wishlist:", error);
     }
   };
-  
-  // const handleRemoveItem = async (itemId) => {
-  //   let urlQuery = `/user/removeFromCart/${itemId}`;
 
-  //   try {
-  //     const response = await axiosInstance.patch(urlQuery);
-  //     const updatedCartItems = cartData.item.filter(
-  //       (item) => item._id !== itemId
-  //     );
-  //     const updatedTotalPrice = updatedCartItems.reduce(
-  //       (acc, item) => acc + item.price * item.qty,
-  //       0
-  //     );
-
-  //     setCartData({
-  //       ...cartData,
-  //       item: updatedCartItems,
-  //       totalPrice: updatedTotalPrice,
-  //     });
-  //     const filteredItems = updatedCartItems.filter((obj)=>{
-
-  //       return obj.productId.isAvailable !=false
-  
-  //     })
-
-  //     // Calculate the total sale price
-  //     const totalSalePrice = calculateTotalSalePrice(filteredItems);
-  //     setSalePriceTotal(totalSalePrice);
-
-  //     // Calculate the total  price
-  //     const totalProPrice = calculateTotalProPrice(filteredItems);
-  //     setProPriceTotal(totalProPrice);
-
-  //     if (cartData?.item.length - 1 == 0) {
-  //       navigate("/");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error removing item from wishlist:", error);
-  //   }
-  // };
-
-  //
-
-  // const handleQuantityChange = async (item, operation, index) => {
-  //   let QtyApi = item.qty;
-  //   if (operation === "increment") {
-  //     QtyApi += 1;
-  //   } else if (operation === "decrement") {
-  //     QtyApi -= 1;
-  //   }
-  //   // Optimistically update the UI
-  //   const updatedCartData = { ...cartData };
-  //   updatedCartData.item[index].qty = QtyApi;
-  //   setCartData(updatedCartData);
-
-  //   setLoadingIndex(index); // Set loading state
-
-  //   try {
-  //     if (item?.qty <= item?.productId?.stock && operation === "increment") {
-  //       const response = await axiosInstance.patch(`/user/updateQty`, {
-  //         qty: QtyApi,
-  //         productId: item?.productId?._id,
-  //       });
-  //      await fetchData();
-  //     } else if (item?.qty > 1 && operation === "decrement") {
-  //       const response = await axiosInstance.patch(`/user/updateQty`, {
-  //         qty: QtyApi,
-  //         productId: item?.productId?._id,
-  //       });
-  //     await  fetchData();
-  //     }
-  //   } catch (error) {
-  //     // Revert the state change if the API call fails
-  //     const revertedCartData = { ...cartData };
-  //     revertedCartData.item[index].qty = item.qty;
-  //     setCartData(revertedCartData);
-  //     console.log(error);
-  //   } finally {
-  //     setLoadingIndex(null); // Clear loading state
-  //   }
-  // };
   const handleQuantityChange = async (item, operation, index) => {
     let QtyApi = item.qty;
-    // if (operation === "increment") {
-    //   QtyApi += 1;
-    // } else if (operation === "decrement") {
-    //   QtyApi -= 1;
-    // }
-  
-    // Optimistically update the UI
+
     const updatedFilteredCartData = [...filteredCartData];
     updatedFilteredCartData[index].qty = QtyApi;
     setFilteredCartData(updatedFilteredCartData);
-  
-    setLoadingIndex(index); // Set loading state
-  
+
+    setLoadingIndex(index);
+
     try {
       if (
         item?.qty <= item?.productId?.stock &&
@@ -259,14 +241,14 @@ const Checkout = () => {
           qty: QtyApi,
           productId: item?.productId._id,
         });
-      
+
       } else if (item?.qty > 1 && operation === "decrement") {
         QtyApi -= 1;
         const response = await axiosInstance.patch("/user/updateQty", {
           qty: QtyApi,
           productId: item?.productId._id,
         });
-       
+
       }
     } catch (error) {
       // Revert the state change if the API call fails
@@ -279,7 +261,7 @@ const Checkout = () => {
       await fetchData();
     }
   };
-  
+
 
   React.useEffect(() => {
     const script = document.createElement("script");
@@ -316,9 +298,11 @@ const Checkout = () => {
 
     const response = await axiosInstance.post(`/orders`, {
       payment_mode: paymentOption,
-      amount: productsOrderData?.totalPrice,
-      address: orderAddress,
+      // amount: productsOrderData?.totalPrice,
+      amount: totalAmountToPay,
+      address: orderAddress,    
       products: productsOrderData,
+      couponId: appliedCouponDetails._id,
     });
 
     Swal.fire({
@@ -331,18 +315,23 @@ const Checkout = () => {
     navigate("/order");
   };
 
+  const deliveryChargeTotal = salePriceTotal < 299
+    ? salePriceTotal + deliveryCharge
+    : salePriceTotal;
+  const maximumDiscountPrice = (appliedCouponDetails?.maxValue < ((deliveryChargeTotal * discount) / 100)) ? appliedCouponDetails?.maxValue : ((deliveryChargeTotal * discount) / 100);
+  const totalAmountToPay = discount > 0
+    ? deliveryChargeTotal - maximumDiscountPrice : deliveryChargeTotal;
+
   const placeOrder = async () => {
 
-    const totalAmountToPay = salePriceTotal < 299 
-    ? salePriceTotal + deliveryCharge 
-    : salePriceTotal;
+
 
     if (paymentOption === "cod") {
       handlePaymentSuccess();
     } else if (paymentOption === "razorpay") {
       const options = {
         key: import.meta.env.VITE_API_RAZORPAY,
-        amount: parseInt(totalAmountToPay) * 100, // amount in paisa
+        amount: parseInt(totalAmountToPay) * 100,
         currency: "INR",
         name: "KGECO",
         description: "Purchase course",
@@ -417,9 +406,14 @@ const Checkout = () => {
   // static
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
- 
-  
-  
+
+
+
+
+
+
+
+
 
   return (
     <>
@@ -472,11 +466,10 @@ const Checkout = () => {
                           {addressDatas.map((address) => (
                             <div key={address._id} className="col-md-6">
                               <div
-                                className={`border rounded p-3 h-100 ${
-                                  selectedAddress === address
-                                    ? "border-success"
-                                    : ""
-                                }`}
+                                className={`border rounded p-3 h-100 ${selectedAddress === address
+                                  ? "border-success"
+                                  : ""
+                                  }`}
                               >
                                 <p className="mb-1">
                                   <strong>
@@ -492,11 +485,10 @@ const Checkout = () => {
                                 <p className="mb-1">{address.country}</p>
                                 <p className="mb-3">Phone: {address.mobile}</p>
                                 <button
-                                  className={`btn ${
-                                    orderAddress === address
-                                      ? "btn-success"
-                                      : "btn-outline-success"
-                                  } w-100`}
+                                  className={`btn ${orderAddress === address
+                                    ? "btn-success"
+                                    : "btn-outline-success"
+                                    } w-100`}
                                   onClick={() => setOrderAddress(address)}
                                 >
                                   {orderAddress === address
@@ -550,9 +542,8 @@ const Checkout = () => {
                         >
                           <div className="col-md-3">
                             <img
-                              src={`${
-                                import.meta.env.VITE_API_BASE_URL_LOCALHOST
-                              }/uploads/${product?.productId?.image[0]}`}
+                              src={`${import.meta.env.VITE_API_BASE_URL_LOCALHOST
+                                }/uploads/${product?.productId?.image[0]}`}
                               alt={product?.name}
                               className="img-fluid rounded"
                             />
@@ -589,7 +580,7 @@ const Checkout = () => {
                                   product?.qty === 1 || loadingIndex === index
                                 }
                               >
-                                    {loadingIndex === index ? <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> : <FaMinus />}
+                                {loadingIndex === index ? <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> : <FaMinus />}
 
                               </button>
                               <input
@@ -610,7 +601,7 @@ const Checkout = () => {
                                 }
                                 disabled={loadingIndex === index}
                               >
-                              {loadingIndex === index ? <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> : <FaPlus />}
+                                {loadingIndex === index ? <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> : <FaPlus />}
                               </button>
                             </div>
 
@@ -650,7 +641,7 @@ const Checkout = () => {
                   </section>
                 )}
 
-                {currentStep === 3 && (
+                {/* {currentStep === 3 && (
                   <section className="card shadow-sm mb-4">
                     <div className="card-header bg-white border-bottom">
                       <h5 className="mb-0 text-success">3. Payment Options</h5>
@@ -722,6 +713,177 @@ const Checkout = () => {
                       </div>
                     </div>
                   </section>
+                )} */}
+
+
+                {currentStep === 3 && (
+
+
+                  <section className="bg-white p-3 shadow-sm mb-4">
+                    <div className="card-header bg-white border-bottom">
+                      <h5 className="mb-0 text-success">3. Payment Options</h5>
+                    </div>
+                    <div className="card-body">
+                      {/* Coupon Section */}
+                      <div className="mb-3 p-3 border rounded">
+                        <h6 className="fw-bold mb-3">Apply Coupon</h6>
+                        <div className="input-group mb-2">
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Enter coupon code"
+                            value={appliedCoupon}
+                            onChange={(e) => setAppliedCoupon(e.target.value)}
+                          />
+                          <button
+                            className="btn btn-outline-success"
+                            onClick={() => applyCoupon(appliedCoupon)}
+                            
+                          >
+                            Apply
+                          </button>
+                          <button
+                            className="btn btn-outline-secondary"
+                            onClick={() => setShowCouponModal(true)}
+                          >
+                            Browse Coupons
+                          </button>
+                        </div>
+                        {discount > 0 && (
+                          <div className="text-success mt-2">
+                            Coupon applied! You saved ₹{maximumDiscountPrice.toFixed(2)}
+                          </div>
+                        )}
+                        <small className="text-muted">
+                          You can apply a coupon code or browse available coupons.
+                        </small>
+                      </div>
+
+                      {/* Payment Options */}
+                      {/* <div className="form-check mb-3 p-3 border rounded">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="paymentOption"
+                          id="razorpayOption"
+                          value="razorpay"
+                          checked={paymentOption === 'razorpay'}
+                          onChange={() => setPaymentOption('razorpay')}
+                        />
+                        <label className="form-check-label" htmlFor="razorpayOption">
+                          <FaCreditCard className="me-2 text-success" />
+                          <span className="fw-bold d-block mb-1">Online Payment</span>
+                          <span className="text-muted small">
+                            Pay securely with your credit/debit card or net banking
+                          </span>
+                        </label>
+                      </div> */}
+
+                      <div className="form-check mb-3 p-3 border rounded">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          name="paymentOption"
+                          id="razorpayOption"
+                          value="razorpay"
+                          checked={paymentOption === "razorpay"}
+                          onChange={() => setPaymentOption("razorpay")}
+                        />
+                        <label
+                          className="form-check-label"
+                          htmlFor="razorpayOption"
+                        >
+                          <span className="fw-bold d-block mb-1">
+                            Online Payment
+                          </span>
+                          <span className="text-muted small">
+                            Pay securely with your credit/debit card or net
+                            banking
+                          </span>
+                        </label>
+                      </div>
+                      <div className="form-check mb-3 p-3 border rounded">
+                        <input
+                          className="form-check-input"
+                          type="radio"
+                          disabled
+                          name="paymentOption"
+                          id="codOption"
+                          value="cod"
+                          checked={paymentOption === "cod"}
+                          onChange={() => setPaymentOption("cod")}
+                        />
+                        <label className="form-check-label" htmlFor="codOption">
+                          <span className="text-danger">
+                            *** not available ***
+                          </span>{" "}
+                          <br />
+                          <span className="fw-bold d-block mb-1">
+                            Cash on Delivery
+                          </span>
+                          <span className="text-muted small">
+                            Pay when your order is delivered
+                          </span>
+                        </label>
+                      </div>
+
+                      <div className="d-flex justify-content-between mt-4">
+                        <button
+                          className="btn btn-outline-secondary"
+                          onClick={() => setCurrentStep(2)}
+                        >
+                          Back
+                        </button>
+                        <button className="btn btn-primary" onClick={placeOrder}>
+                          Place Your Order
+                        </button>
+                      </div>
+                    </div>
+
+                    {showCouponModal && (
+                      <div className="modal show d-block" role="dialog">
+                        <div className="modal-dialog modal-dialog-centered">
+                          <div className="modal-content">
+                            <div className="modal-header">
+                              <h5 className="modal-title">Available Coupons</h5>
+                              <button
+                                type="button"
+                                className="btn-close"
+                                onClick={() => setShowCouponModal(false)}
+                              ></button>
+                            </div>
+                            <div className="modal-body">
+                              <div className="list-group">
+                                {coupons.length ? coupons?.map((coupon) => (
+                                  <button
+                                    key={coupon._id}
+                                    className="list-group-item list-group-item-action"
+                                    onClick={() => {
+                                      setAppliedCoupon(coupon.code);
+                                      setShowCouponModal(false);
+                                    }}
+                                  >
+                                    <span className=" bg-success-subtle p-1 rounded-1 me-2">{coupon.code}</span>
+                                    <span>{coupon.discount}% off on your order</span>
+                                  </button>
+                                )) : <span>Coupons Not Available</span>}
+
+                              </div>
+                            </div>
+                            <div className="modal-footer">
+                              <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => setShowCouponModal(false)}
+                              >
+                                Close
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </section>
                 )}
               </div>
 
@@ -738,16 +900,25 @@ const Checkout = () => {
                     <div className="d-flex justify-content-between mb-2">
                       <span>Delivery Fee:</span>
                       {salePriceTotal > 299 ? (
-                       <span>
+                        <span>
                           <span className="text-decoration-line-through">
                             ₹{deliveryCharge}{" "}
                           </span>
                           <span className="text-success ms-2"> Free Delivery</span>
-                       </span>
+                        </span>
                       ) : (
                         <span>₹{deliveryCharge}</span>
                       )}
                     </div>
+                    {maximumDiscountPrice > 0 && <div className="row mb-3">
+                      <div className="col-8">
+                        <div className="d-flex align-items-center">
+                          <span>Coupon Discount:</span>
+
+                        </div>
+                      </div>
+                      <div className="col-4 text-end text-success">-₹{maximumDiscountPrice.toFixed(2)}</div>
+                    </div>}
                     <div className="d-flex justify-content-between mb-2">
                       <span>Total Discount:</span>
                       <span>-₹{proPriceTotal - salePriceTotal}</span>
@@ -756,10 +927,7 @@ const Checkout = () => {
                     <div className="d-flex justify-content-between fw-bold">
                       <span>Total:</span>
                       <span>
-                        ₹
-                        {salePriceTotal < 299
-                          ? salePriceTotal + deliveryCharge
-                          : salePriceTotal}
+                        ₹{totalAmountToPay.toFixed(2)}
                       </span>
                     </div>
                   </div>

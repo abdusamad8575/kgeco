@@ -1,6 +1,7 @@
 import Dashboard from "pages/Dashboard";
 import Category from "pages/Category";
 import Products from "pages/Products";
+import Coupon from "pages/Coupon";
 import Orders from "pages/Orders";
 import Banner from "pages/Banner";
 import Blogs from "pages/Blogs";
@@ -49,6 +50,14 @@ const routes = [
     route: "/banners",
     icon: <Box component="i" color="warning" fontSize="14px" className="ni ni-album-2" />,
     component: <Banner />,
+  },
+  {
+    type: "route",
+    name: "Coupons",
+    key: "coupons",
+    route: "/coupons",
+    icon: <Box component="i" color="warning" fontSize="14px" className="ni ni-album-2" />,
+    component: <Coupon />,
   },
   // {
   //   type: "route",

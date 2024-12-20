@@ -3,6 +3,11 @@ const Otp = require('../models/otp')
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+
+const fast2sms = require('fast-two-sms');
+const dotenv = require('dotenv');
+dotenv.config();
+
 // module.exports.signup = async (req, res) => {
 //   const { username, password, email, phone,clientOtp } = req?.body;
 // console.log(req?.body)
@@ -283,3 +288,63 @@ module.exports.getCurrentUser = async (req, res) => {
       .json({ message: err?.message ?? "Something went wrong" });
   }
 };
+
+
+
+let otpStore = {};
+
+module.exports.sendOtp = async (req, res) => {    
+  const { number } = req.body;
+  console.log('number',number);
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  // const otp = '123456'
+  console.log('otp',otp);
+  otpStore[number] = otp;    
+
+ 
+  const options = {   
+    authorization: process.env.FAST2SMS_API_KEY,   
+    message: `Your OTP is: ${otp}`,
+    numbers: [number]
+  };
+  console.log('options',options);    
+  
+  try {
+    await fast2sms.sendMessage(options);
+    res.status(200).json({ message: 'OTP sent successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to send OTP', error: error.message });
+  }
+};
+
+
+module.exports.verifyOtp = async (req, res) => {  
+  const { number, otp  } = req.body;  
+  console.log('number, otp',number, otp);
+
+  if (otpStore[number] !== otp) {
+    return res.status(400).json({ message: 'Invalid OTP' });
+  }
+
+  let user = await User.findOne({ phone:number });
+  
+
+  if (!user) {   
+    user = new User({ phone:number });
+     
+    await user.save();   
+  }  
+
+  const accessToken = jwt.sign({ _id: user._id }, process.env.JWT_ACCESS_SECRET, {
+    expiresIn: process.env.JWT_ACCESS_EXPIRY,
+  });
+
+  const refreshToken = jwt.sign({ _id: user._id }, process.env.JWT_REFRESH_SECRET, {
+    expiresIn: process.env.JWT_REFRESH_EXPIRY,
+  });
+
+  res.status(200).json({
+    message: 'Login successful',
+    data: { token: { accessToken, refreshToken }, user }
+  });
+};       

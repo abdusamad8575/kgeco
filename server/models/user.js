@@ -5,19 +5,15 @@ const userSchema = mongoose.Schema(
   {
     username: {
       type: String,
-      required: true,
     },
     email: {
       type: String,
-      required: true,
     },
     phone: {
       type: String,
-      required: true,
     },
     password: {
       type: String,
-      required: true,
     },
     is_admin: {
       type: Boolean,
@@ -68,6 +64,10 @@ const userSchema = mongoose.Schema(
       type: Number,
       default: 0,
     },
+    coupons: [{
+      type: mongoose.Types.ObjectId,
+      ref: 'Coupon'
+    }]
   },
   {
     timestamps: true,

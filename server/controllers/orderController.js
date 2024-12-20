@@ -104,24 +104,30 @@ const getOrderById = async (req, res) => {
 const createOrder = async (req, res) => {
   const { _id } = req?.decoded
 
-  const {  payment_mode, amount, address, products } = req?.body
+  const {  payment_mode, amount, address, products,couponId } = req?.body
 
   console.log('addrr',address)
   try {
     const data = await Order.create({ userId:_id, payment_mode, amount, address, products })
     console.log('prod qty findings ',products.item)
 
-// Remove cart items from the user after order creation
 const user = await User.findById(_id);
-user.cart.item = []; // Clear the cart items
-user.cart.totalPrice = 0; // Reset total price to zero
-await user.save(); // Save the user with cleared cart
+user.cart.item = []; 
+user.cart.totalPrice = 0; 
+
+if (couponId) {
+  if (user.coupons.includes(couponId)) {
+    return res.status(400).json({ message: "Coupon already used" });
+  } else {
+    user.coupons.push(couponId);
+  }
+}
+await user.save();
 
 for (const item of products.item) {
   const product = await Product.findById(item.product_id);
 
   if (product) {
-    // Reduce the product stock by the ordered quantity
     product.stock -= item.qty;
     await product.save();
   }
